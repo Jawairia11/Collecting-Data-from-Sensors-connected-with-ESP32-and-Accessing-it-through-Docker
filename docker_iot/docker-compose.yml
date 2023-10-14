@@ -1,0 +1,67 @@
+version: "1"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    restart: always
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    networks:
+      - iot
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  influxdb:
+    image: influxdb:latest
+    restart: always
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE : "setup"
+      DOCKER_INFLUXDB_INIT_USERNAME : "admin" 
+      DOCKER_INFLUXDB_INIT_PASSWORD : "alpha12345@"
+      DOCKER_INFLUXDB_INIT_ORG : "METAPI" 
+      DOCKER_INFLUXDB_INIT_BUCKET : "IOT" 
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN : "f942pYWY5-hykTpYyXrC-ajD5zYROixagSY_GG183ShInyn1r2LEbI8GrSCqNcl7w3DB4nWvrGppD3GB-BLJSQ=="
+    ports:
+      - "8086:8086"
+    networks:
+      - iot
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+  
+  telegraf:
+    image: telegraf:latest
+    restart: always
+    environment:
+      INFLUX_HOST : http://10.140.96.126:8086
+      INFLUX_ORG : "METAPI"
+      INFLUX_BUCKET : "IOT"
+      INFLUX_TOKEN : "f942pYWY5-hykTpYyXrC-ajD5zYROixagSY_GG183ShInyn1r2LEbI8GrSCqNcl7w3DB4nWvrGppD3GB-BLJSQ=="
+    networks:
+      - iot
+    depends_on:
+      - mosquitto
+      - influxdb
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+
+  grafana: 
+    image: grafana/grafana:latest
+    restart: always
+    environment:
+      GF_FEATURE_TOGGLES_ENABLE : publicDashboards
+    ports:
+      - "3000:3000"
+    networks:
+      - iot
+    depends_on:
+      - influxdb
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+networks:
+  iot:
+
+volumes:
+  influxdb-data:
+  grafana-data:
